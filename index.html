@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>המשפחה של סול - תרגול עם שמע</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        :root {
+            --white-w: 50px; --black-w: 25px;
+            --modern-hi: #454b54; --modern-lo: #1b1e23; --teal: #6fd6c9; --gold: #e0a83f;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none !important;
+            -webkit-touch-callout: none;
+            font-family: Arial, sans-serif;
+        }
+        #app { display: flex; flex-direction: column; width: 100%; height: 100%; }
+
+        #start-screen { position: fixed; inset: 0; background: rgba(0,0,0,0.85); color: white; display: flex; justify-content: center; align-items: center; z-index: 100; cursor: pointer; font-size: 22px; text-align: center; padding: 20px; box-sizing: border-box; }
+
+        #speed-bar {
+            flex: 0 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            background: #1a1a1a;
+            touch-action: auto;
+        }
+        .speed-step-btn {
+            touch-action: auto;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            font-family: Arial, sans-serif;
+            background: #333;
+            color: #fff;
+            cursor: pointer;
+        }
+        .speed-step-btn:active { background: #555; }
+        #play-pause {
+            width: 54px;
+            height: 54px;
+            font-size: 26px;
+        }
+        #speed-reset {
+            touch-action: auto;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 18px;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+            background: #333;
+            color: #fff;
+            cursor: pointer;
+            min-width: 90px;
+        }
+        #speed-reset.is-normal { background: #ffeb3b; color: #000; font-weight: bold; }
+
+        #piano-container {
+            flex: 1 1 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 1.5vh 0;
+            box-sizing: border-box;
+            touch-action: none !important;
+            min-height: 0;
+        }
+        #rig {
+            display: grid;
+            grid-template-columns: auto;
+            align-items: end;
+            justify-content: center;
+            gap: 16px;
+            width: 100%;
+            overflow-x: auto;
+            padding: 0 8px;
+        }
+        #cabinet {
+            flex-shrink: 0;
+            width: fit-content;
+            display: flex; flex-direction: column;
+            background: linear-gradient(180deg, var(--modern-hi) 0%, var(--modern-lo) 100%);
+            border-radius: 14px;
+            padding: 12px 12px 0;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 10px 26px rgba(0,0,0,0.45);
+        }
+        #cabinet-lip {
+            flex: 0 0 auto;
+            height: 4px; border-radius: 3px; margin-bottom: 10px;
+            background: linear-gradient(90deg, var(--teal), #bdf2ea, var(--teal));
+            box-shadow: 0 0 6px rgba(111,214,201,0.6);
+        }
+        #keywell {
+            position: relative;
+            background: linear-gradient(180deg, #100f13 0%, var(--modern-lo) 100%);
+            border-radius: 10px 10px 0 0;
+            padding: 10px 10px 0;
+            display: flex; flex-direction: column; align-items: stretch;
+        }
+        #practice-hint {
+            position: absolute;
+            top: 6px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(111,214,201,0.4);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 16px;
+            white-space: nowrap;
+            z-index: 60;
+            opacity: 1;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        #practice-hint.hidden { opacity: 0; }
+        #note-lane {
+            position: relative;
+            height: var(--lane-h, 0px);
+            display: flex;
+            overflow: hidden;
+            border-radius: 8px 8px 0 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.32));
+            margin-bottom: 6px;
+            transition: height 0.2s ease;
+        }
+        #note-lane.hidden { height: 0 !important; margin-bottom: 0; }
+        .note-lane-col {
+            position: relative;
+            width: var(--white-w);
+            height: 100%;
+            border-right: 1px solid rgba(255,255,255,0.05);
+        }
+        .note-lane-col:last-child { border-right: none; }
+        #note-lane-hitline {
+            position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #29c98f, #baf7d9, #29c98f);
+            box-shadow: 0 0 9px rgba(41,201,143,0.8), inset 0 0 2px rgba(255,255,255,0.6);
+        }
+        .falling-note {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: calc(var(--white-w) * 0.48);
+            height: calc(var(--white-w) * 0.48);
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+        /* The circular clip lives on an inner wrapper (not .falling-note
+           itself) so a sharp-note badge can sit at the outer element's
+           corner without being cut off by the avatar's own round mask. */
+        .falling-note-avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid rgba(0,0,0,0.85);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 10px 2px rgba(255,255,255,0.65);
+            background: #333;
+        }
+        .falling-note-avatar img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        /* Sharps don't have their own character in the do-re-mi-fa-sol-la-si
+           cast, so a sharp note reuses its neighboring natural's character
+           with this small black-circle badge marking it as "the black key
+           version" — on both the physical key and the falling tile. */
+        .sharp-badge {
+            position: absolute;
+            top: -6%;
+            right: 4%;
+            width: 38%;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #555, #000 80%);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+            pointer-events: none;
+            z-index: 2;
+        }
+        .key.sharp-glow {
+            box-shadow: 0 0 10px 3px rgba(111,214,201,0.65), inset 0 0 0 2px rgba(111,214,201,0.55);
+        }
+        .falling-note.sharp {
+            left: 100%;
+        }
+        .falling-note.sharp .falling-note-avatar {
+            border-color: var(--teal);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 12px 4px rgba(111,214,201,0.85);
+        }
+
+        /* "אני רוצה לנסות לבד" — an alternate, self-paced view: instead of
+           notes falling with the video/audio driving the timing, every note
+           in the song sits laid out left-to-right on a music staff, at its
+           real pitch height, and the child works through them at their own
+           pace with no clock pushing them forward. */
+        #solo-btn {
+            touch-action: auto;
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 20px;
+            padding: 9px 20px;
+            font-size: 15px;
+            font-family: Arial, sans-serif;
+            background: #262626;
+            color: #fff;
+            cursor: pointer;
+        }
+        #solo-btn.active { background: var(--teal); color: #0a1210; border-color: var(--teal); font-weight: bold; }
+
+        /* "ככה השיר נשמע" — a short reference clip of Hani playing+singing
+           the taught segment, so a child who's pressing the right notes but
+           can't recognize the tune in them has somewhere to actually hear it,
+           in the scale she played it in. Plays start-to-finish on its own —
+           never layered under the child's own playing — so the piano goes
+           inert for that moment instead of inviting a confusing double-take. */
+        #melody-btn {
+            touch-action: auto;
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 20px;
+            padding: 9px 20px;
+            font-size: 15px;
+            font-family: Arial, sans-serif;
+            background: #262626;
+            color: #fff;
+            cursor: pointer;
+        }
+        #melody-btn.playing { background: var(--gold); color: #2a1c00; border-color: var(--gold); font-weight: bold; }
+        .piano.melody-playing { pointer-events: none; opacity: 0.55; }
+        #staff-wrap {
+            position: relative;
+            /* Tied to the piano's own width (7 white keys) — without this,
+               #cabinet's width:fit-content let the staff's full, unclipped
+               content (however many notes long) stretch the whole cabinet
+               to match it instead of scrolling inside a bounded box, which
+               on a narrow phone blew the piano itself far past the keys'
+               own real, already-correct width. */
+            width: calc(var(--white-w) * 7);
+            height: var(--staff-h, 150px);
+            overflow-x: auto;
+            overflow-y: hidden;
+            border-radius: 8px 8px 0 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.32));
+            margin-bottom: 6px;
+            display: none;
+        }
+        #staff-wrap.active { display: block; }
+        #staff-inner { position: relative; height: 100%; }
+        .staff-line {
+            position: absolute;
+            left: 0; right: 0;
+            height: 2px;
+            background: rgba(255,255,255,0.32);
+        }
+        .staff-ledger {
+            position: absolute;
+            height: 2px;
+            background: rgba(255,255,255,0.32);
+            transform: translate(-50%, -50%);
+        }
+        .staff-note {
+            position: absolute;
+            transform: translate(-50%, -50%);
+        }
+        .staff-note-avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid rgba(0,0,0,0.85);
+            background: #333;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 10px 2px rgba(255,255,255,0.55);
+        }
+        .staff-note-avatar img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        /* Already played correctly — lights up teal and stays lit, so the
+           child can see their progress through the whole line at a glance.
+           No "play this next" hint on purpose. */
+        .staff-note.done .staff-note-avatar {
+            border-color: var(--teal);
+            box-shadow: 0 0 12px 4px rgba(111,214,201,0.9);
+        }
+        @keyframes bubble-pop {
+            0%   { transform: translateX(-50%) scale(1); opacity: 1; }
+            30%  { transform: translateX(-50%) scale(0.85); opacity: 1; }
+            100% { transform: translateX(-50%) scale(2.1); opacity: 0; }
+        }
+        .falling-note.hit { animation: bubble-pop 0.3s ease-out forwards; }
+
+        .piano {
+            align-self: center;
+            display: flex;
+            position: relative;
+            direction: ltr;
+            height: var(--key-h, 220px);
+            touch-action: none !important;
+        }
+
+        .key {
+            position: relative;
+            border: 1px solid #000;
+            box-sizing: border-box;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 6px;
+            z-index: 10;
+            touch-action: none !important;
+            -webkit-touch-callout: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .white-key { width: var(--white-w); height: 100%; background-color: white; border-radius: 0 0 5px 5px; }
+
+        .key-fill {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 0%;
+            z-index: -1;
+            pointer-events: none;
+            border-radius: 0 0 5px 5px;
+            background: linear-gradient(180deg, rgba(130,226,255,0.4), rgba(41,150,201,0.75));
+            transition: height 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .key-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: rgba(255,255,255,0.85);
+            box-shadow: 0 0 6px rgba(255,255,255,0.85);
+            transform-origin: 50% 50%;
+        }
+        .key-fill.pouring::after {
+            animation: water-sway 0.9s ease-out 1;
+        }
+        @keyframes water-sway {
+            0%   { transform: rotate(0deg) translateY(0); }
+            20%  { transform: rotate(-6deg) translateY(0); }
+            45%  { transform: rotate(4deg) translateY(-2px); }
+            70%  { transform: rotate(-2deg) translateY(0); }
+            100% { transform: rotate(0deg) translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .key-fill.pouring::after { animation: none; }
+        }
+
+        .black-key {
+            width: var(--black-w);
+            height: 45%;
+            background-color: #333;
+            z-index: 30;
+            margin-left: calc(var(--black-w) / -2);
+            margin-right: calc(var(--black-w) / -2);
+            border-radius: 0 0 3px 3px;
+        }
+
+        .key.active { background-color: #ffeb3b !important; }
+        .key.due { box-shadow: inset 0 0 0 5px #4caf50; }
+        .key.correct-flash {
+            background-color: #ffab00 !important;
+            box-shadow: 0 0 10px 2px rgba(255, 171, 0, 0.45);
+            transition: background-color 0.25s ease-out, box-shadow 0.25s ease-out;
+        }
+        @keyframes star-pop {
+            0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+            40%  { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
+        }
+        .star-pop {
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            font-size: 28px;
+            pointer-events: none;
+            animation: star-pop 0.55s ease-out forwards;
+            z-index: 41;
+        }
+
+        .character-img {
+            width: 80%;
+            margin-bottom: 4px;
+            pointer-events: none;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+
+        #calib-panel {
+            display: none;
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            z-index: 200;
+            background: rgba(0,0,0,0.75);
+            border-radius: 10px;
+            padding: 8px;
+            max-width: 220px;
+            touch-action: auto;
+            font-family: Arial, sans-serif;
+            color: #fff;
+        }
+        #calib-panel button {
+            touch-action: auto;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            margin: 2px;
+        }
+        #calib-mark { background: #ffeb3b; color: #000; font-weight: bold; width: 100%; padding: 12px; font-size: 16px; }
+        #calib-undo { background: #555; color: #fff; }
+        #calib-clear { background: #555; color: #fff; }
+        #calib-copy { background: #4caf50; color: #fff; }
+        #calib-list {
+            touch-action: auto;
+            max-height: 110px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 6px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 6px;
+            padding: 4px;
+            direction: ltr;
+            text-align: left;
+        }
+        #calib-copy-box {
+            display: none;
+            touch-action: auto;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 6px;
+            font-size: 12px;
+            direction: ltr;
+            text-align: left;
+            resize: none;
+            border-radius: 6px;
+            border: 1px solid #4caf50;
+            padding: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- Audio-only lesson, hosted permanently — no visible video, black
+         background throughout, only the piano/lane/characters. -->
+    <audio id="song-audio" src="song.mp3" muted preload="none"></audio>
+    <audio id="melody-audio" src="melody.mp3" preload="none"></audio>
+    <div id="speed-bar">
+        <button id="play-pause" class="speed-step-btn">⏸</button>
+        <button id="speed-minus" class="speed-step-btn">－</button>
+        <button id="speed-reset" class="is-normal">מהירות</button>
+        <button id="speed-plus" class="speed-step-btn">＋</button>
+        <button id="melody-btn">🎵 ככה השיר נשמע</button>
+        <button id="solo-btn">אני רוצה לנסות לבד</button>
+    </div>
+    <div id="piano-container">
+        <div id="rig">
+            <div id="cabinet">
+                <div id="cabinet-lip"></div>
+                <div id="keywell">
+                    <div id="practice-hint" class="hidden">לחצו על הקליד כשהדמות מגיעה לקו 👇</div>
+                    <div id="note-lane"></div>
+                    <div id="staff-wrap"><div id="staff-inner"></div></div>
+                    <div class="piano" id="piano"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="start-screen">לחצי כאן כדי להתחיל את השיעור והפסנתר</div>
+
+<div id="calib-panel">
+    <button id="calib-mark">סמן עכשיו ▶</button>
+    <div style="display:flex; justify-content:space-between;">
+        <button id="calib-undo">בטל אחרון</button>
+        <button id="calib-clear">נקה הכל</button>
+    </div>
+    <button id="calib-copy" style="width:100%">העתק תוצאות</button>
+    <textarea id="calib-copy-box" readonly rows="3"></textarea>
+    <div id="calib-list"></div>
+</div>
+
+<script>
+    const startScreen = document.getElementById('start-screen');
+    const pianoElement = document.getElementById('piano');
+    const pianoContainer = document.getElementById('piano-container');
+    const noteLane = document.getElementById('note-lane');
+    const practiceHint = document.getElementById('practice-hint');
+    let hintTimeout = null;
+    function showPracticeHint() {
+        practiceHint.classList.remove('hidden');
+        clearTimeout(hintTimeout);
+        hintTimeout = setTimeout(() => practiceHint.classList.add('hidden'), 4500);
+    }
+    function dismissPracticeHint() {
+        practiceHint.classList.add('hidden');
+        clearTimeout(hintTimeout);
+    }
+
+    // Calibration tool is dev-only: hidden from students, shown only when
+    // building/checking a song's timing map via ?admin=1 in the URL.
+    if (new URLSearchParams(location.search).get('admin') === '1') {
+        document.getElementById('calib-panel').style.display = 'block';
+    }
+
+    // No video here — a hidden <audio> element (hosted file, not a picker)
+    // takes the YouTube player's place, wrapped in the same shape so the
+    // rest of the page's logic doesn't need to know the difference.
+    const audioEl = document.getElementById('song-audio');
+    const PlayerState = { ENDED: 0, PLAYING: 1, PAUSED: 2 };
+    const YT = { PlayerState: PlayerState };
+    const player = {
+        getCurrentTime: () => audioEl.currentTime || 0,
+        getDuration: () => audioEl.duration || 0,
+        playVideo: () => { audioEl.play().catch(() => {}); },
+        pauseVideo: () => audioEl.pause(),
+        seekTo: (t) => { audioEl.currentTime = t; },
+        setPlaybackRate: (r) => { audioEl.playbackRate = r; },
+        getPlayerState: () => audioEl.ended ? PlayerState.ENDED : (audioEl.paused ? PlayerState.PAUSED : PlayerState.PLAYING),
+    };
+
+    startScreen.addEventListener('click', async () => {
+        await Tone.start();
+        await reverb.ready;
+        startScreen.style.display = 'none';
+        showPracticeHint();
+        player.playVideo();
+    });
+
+    const speedSteps = [0.5, 0.75, 1, 1.25, 1.5];
+    let speedIndex = 2; // 1x
+    const speedMinusBtn = document.getElementById('speed-minus');
+    const speedPlusBtn = document.getElementById('speed-plus');
+    const speedResetBtn = document.getElementById('speed-reset');
+
+    function applySpeed(index) {
+        speedIndex = Math.max(0, Math.min(speedSteps.length - 1, index));
+        const rate = speedSteps[speedIndex];
+        player.setPlaybackRate(rate);
+        const isNormal = rate === 1;
+        speedResetBtn.textContent = isNormal ? 'מהירות' : `×${rate}`;
+        speedResetBtn.classList.toggle('is-normal', isNormal);
+    }
+
+    speedMinusBtn.addEventListener('click', () => applySpeed(speedIndex - 1));
+    speedPlusBtn.addEventListener('click', () => applySpeed(speedIndex + 1));
+    speedResetBtn.addEventListener('click', () => applySpeed(2));
+    applySpeed(speedIndex);
+
+    // Pause/resume — becomes "play again" once the song ends.
+    const playPauseBtn = document.getElementById('play-pause');
+    let isPaused = false;
+    playPauseBtn.addEventListener('click', () => {
+        if (player.getPlayerState() === YT.PlayerState.ENDED) {
+            player.seekTo(0);
+            player.playVideo();
+            songIdx = 0;
+            songHit = false;
+            resetKeyFills();
+            isPaused = false;
+            playPauseBtn.textContent = '⏸';
+            return;
+        }
+        isPaused = !isPaused;
+        if (isPaused) { player.pauseVideo(); playPauseBtn.textContent = '▶'; }
+        else { player.playVideo(); playPauseBtn.textContent = '⏸'; }
+    });
+    audioEl.addEventListener('ended', () => {
+        if (audioEl.currentTime < 0.5) return;
+        isPaused = true;
+        playPauseBtn.textContent = '🔁';
+    });
+
+    // "ככה השיר נשמע" — plays start-to-finish on its own, never mixed with
+    // the child's own playing, so the piano goes inert for that moment.
+    const melodyBtn = document.getElementById('melody-btn');
+    const melodyAudio = document.getElementById('melody-audio');
+    melodyBtn.addEventListener('click', () => {
+        if (melodyBtn.classList.contains('playing')) return;
+        melodyBtn.classList.add('playing');
+        pianoElement.classList.add('melody-playing');
+        player.pauseVideo();
+        isPaused = true;
+        playPauseBtn.textContent = '▶';
+        melodyAudio.currentTime = 0;
+        melodyAudio.play();
+    });
+    melodyAudio.addEventListener('ended', () => {
+        melodyBtn.classList.remove('playing');
+        pianoElement.classList.remove('melody-playing');
+    });
+
+    // --- Calibration tool: tap "mark now" every time a character hits the
+    // beat, and it logs the exact audio timestamp.
+    const calibMarks = [];
+    const calibListEl = document.getElementById('calib-list');
+    const calibMarkBtn = document.getElementById('calib-mark');
+    const calibUndoBtn = document.getElementById('calib-undo');
+    const calibClearBtn = document.getElementById('calib-clear');
+    const calibCopyBtn = document.getElementById('calib-copy');
+
+    function renderCalibList() {
+        calibListEl.innerHTML = calibMarks
+            .map((t, i) => `${i + 1}. ${t.toFixed(2)}s`)
+            .join('<br>');
+        calibListEl.scrollTop = calibListEl.scrollHeight;
+    }
+
+    calibMarkBtn.addEventListener('click', () => {
+        calibMarks.push(player.getCurrentTime());
+        renderCalibList();
+    });
+    calibUndoBtn.addEventListener('click', () => { calibMarks.pop(); renderCalibList(); });
+    calibClearBtn.addEventListener('click', () => { calibMarks.length = 0; renderCalibList(); });
+    const calibCopyBox = document.getElementById('calib-copy-box');
+    calibCopyBtn.addEventListener('click', () => {
+        const text = calibMarks.map(t => t.toFixed(2)).join(', ');
+        calibCopyBox.value = text;
+        calibCopyBox.style.display = 'block';
+        calibCopyBox.focus();
+        calibCopyBox.select();
+        navigator.clipboard.writeText(text).then(() => {
+            calibCopyBtn.textContent = 'הועתק! (או בחרי ידנית למטה)';
+        }).catch(() => {
+            calibCopyBtn.textContent = 'בחרי את הטקסט למטה ותעתיקי ידנית';
+        });
+        setTimeout(() => { calibCopyBtn.textContent = 'העתק תוצאות'; }, 2500);
+    });
+
+    // Calibrated from Hani's marks for "הפנתר הוורוד". Heavy on sharps —
+    // includes C#, D#, F#, G# and A#.
+    const songTimes = [0.83, 1.74, 2.27, 2.63, 3.92, 4.25, 5.65, 6.15, 6.82, 7.22, 7.85, 8.25, 8.93, 9.34, 10.01, 10.50, 12.87, 13.26, 13.64, 14.04, 16.31, 17.26, 17.99, 18.72, 19.57, 20.14, 20.47, 21.03];
+    const songLetters = ['C', 'C#', 'D', 'D#', 'F', 'F#', 'D', 'D#', 'F', 'F#', 'B', 'A#', 'D#', 'F#', 'A', 'G#', 'F#', 'D#', 'C#', 'D#', 'G#', 'G#', 'G#', 'G#', 'F#', 'D#', 'C#', 'D#'];
+    const songNotes = songTimes.map((t, i) => ({ time: t, note: songLetters[i] + '4' }));
+
+    const songNoteTotals = {};
+    songNotes.forEach(n => { songNoteTotals[n.note] = (songNoteTotals[n.note] || 0) + 1; });
+    const songNoteCorrect = {};
+    const keyFillEls = {};
+    function fillKey(note) {
+        const total = songNoteTotals[note];
+        const fillEl = keyFillEls[note];
+        const keyEl = keyByNote[note];
+        if (!total || !fillEl || !keyEl) return;
+        songNoteCorrect[note] = (songNoteCorrect[note] || 0) + 1;
+        const pct = Math.min(1, songNoteCorrect[note] / total);
+        fillEl.style.height = Math.round(pct * keyEl.clientHeight) + 'px';
+        fillEl.classList.remove('pouring');
+        void fillEl.offsetWidth;
+        fillEl.classList.add('pouring');
+        clearTimeout(fillEl._pourTimeout);
+        fillEl._pourTimeout = setTimeout(() => fillEl.classList.remove('pouring'), 900);
+    }
+
+    // Starting the song over should start the results over too — otherwise
+    // a key already "full" from the last attempt stays full forever, which
+    // stops meaning anything.
+    function resetKeyFills() {
+        Object.keys(songNoteCorrect).forEach(note => { delete songNoteCorrect[note]; });
+        Object.values(keyFillEls).forEach(el => {
+            el.classList.remove('pouring');
+            el.style.height = '0px';
+        });
+    }
+
+    const NOTE_LEAD = 0.6;
+    const NOTE_TAIL = 0.45;
+    let songIdx = 0;
+    let songHit = false;
+    const keyByNote = {};
+
+    const characterImages = ["דו.png", "רה.png", "מי.png", "פה.png", "סול.png", "לה.png", "סי.png"];
+    const noteLetterOrder = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+
+    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const octaves = [4];
+
+    function noteToFile(note, octave) {
+        const letter = note[0].toLowerCase();
+        const sharp = note.includes('#') ? 'd' : '';
+        return `sounds/${letter}${sharp}${octave}.wav`;
+    }
+
+    const knownBadSamples = new Set(['D4', 'E4']);
+
+    const sampleUrls = {};
+    octaves.forEach(octave => {
+        notes.forEach(note => {
+            const fullNote = note + octave;
+            if (knownBadSamples.has(fullNote)) return;
+            sampleUrls[fullNote] = noteToFile(note, octave);
+        });
+    });
+
+    const audioCtx = Tone.getContext().rawContext;
+    const masterGain = audioCtx.createGain();
+    masterGain.gain.value = 1;
+    masterGain.connect(audioCtx.destination);
+
+    const reverb = new Tone.Reverb({ decay: 2.5, wet: 0.32 }).connect(masterGain);
+
+    const sampler = new Tone.Sampler({
+        urls: sampleUrls,
+        baseUrl: "./",
+        attack: 0.005,
+        release: 2.2,
+        onload: () => console.log("Sounds loaded!"),
+        onerror: (e) => console.log("Error loading sound", e)
+    }).connect(reverb);
+
+    let currentMode = 'piano';
+
+    function noteNameToFreq(name) {
+        const idx = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+        const m = name.match(/^([A-G]#?)(\d)$/);
+        const midi = (parseInt(m[2], 10) + 1) * 12 + idx[m[1]];
+        return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    let whiteKeyIndex = 0;
+
+    octaves.forEach(octave => {
+        notes.forEach(note => {
+            const isBlack = note.includes('#');
+            const fullNote = note + octave;
+            const freq = noteNameToFreq(fullNote);
+            const key = document.createElement('div');
+            key.className = `key ${isBlack ? 'black-key' : 'white-key'}`;
+            key.dataset.note = fullNote;
+            key.dataset.isPlaying = "false";
+            keyByNote[fullNote] = key;
+
+            if (songNoteTotals[fullNote]) {
+                const fillEl = document.createElement('div');
+                fillEl.className = 'key-fill';
+                key.appendChild(fillEl);
+                keyFillEls[fullNote] = fillEl;
+            }
+
+            if (!isBlack) {
+                const img = document.createElement('img');
+                img.src = characterImages[whiteKeyIndex] || "";
+                img.className = 'character-img';
+                key.appendChild(img);
+                whiteKeyIndex++;
+            } else if (songNoteTotals[fullNote]) {
+                // A sharp actually used by this song — show its neighboring
+                // natural's character plus the black-circle badge, so the
+                // key isn't just a bare unlabeled strip.
+                const baseIdx = noteLetterOrder.indexOf(note[0]);
+                if (baseIdx !== -1) {
+                    const img = document.createElement('img');
+                    img.src = characterImages[baseIdx] || "";
+                    img.className = 'character-img';
+                    key.appendChild(img);
+                    const badge = document.createElement('div');
+                    badge.className = 'sharp-badge';
+                    key.appendChild(badge);
+                    key.classList.add('sharp-glow');
+                }
+            }
+
+            const playNote = () => {
+                if (key.dataset.isPlaying === "true") return;
+                key.dataset.isPlaying = "true";
+                key.classList.add('active');
+                dismissPracticeHint();
+
+                try { sampler.triggerAttack(fullNote); } catch (err) {}
+
+                if (soloMode) {
+                    if (soloIdx < songNotes.length && fullNote === songNotes[soloIdx].note) {
+                        fillKey(fullNote);
+                        key.classList.add('correct-flash');
+                        const star = document.createElement('div');
+                        star.className = 'star-pop';
+                        star.textContent = '⭐';
+                        key.appendChild(star);
+                        setTimeout(() => {
+                            key.classList.remove('correct-flash');
+                            star.remove();
+                        }, 550);
+                        markStaffNoteDone(soloIdx);
+                        soloIdx++;
+                        updateStaffScroll();
+                    }
+                } else if (!songHit && songIdx < songNotes.length) {
+                    const cur = songNotes[songIdx];
+                    if (fullNote === cur.note) {
+                        const t = player.getCurrentTime();
+                        if (t >= cur.time - NOTE_LEAD && t <= cur.time + NOTE_TAIL) {
+                            songHit = true;
+                            markTileHit(songIdx);
+                            fillKey(fullNote);
+                            key.classList.add('correct-flash');
+                            const star = document.createElement('div');
+                            star.className = 'star-pop';
+                            star.textContent = '⭐';
+                            key.appendChild(star);
+                            setTimeout(() => {
+                                key.classList.remove('correct-flash');
+                                star.remove();
+                            }, 550);
+                        }
+                    }
+                }
+            };
+
+            const stopNote = () => {
+                if (key.dataset.isPlaying === "false") return;
+                key.dataset.isPlaying = "false";
+                key.classList.remove('active');
+                try { sampler.triggerRelease(fullNote); } catch (err) {}
+            };
+
+            let isTouchActive = false;
+
+            key.addEventListener('pointerdown', () => {
+                if (isTouchActive) return;
+                isTouchActive = true;
+                playNote();
+            });
+            key.addEventListener('pointermove', (e) => e.preventDefault());
+            key.addEventListener('pointerup', () => { isTouchActive = false; stopNote(); });
+            key.addEventListener('pointerleave', () => { isTouchActive = false; stopNote(); });
+            key.addEventListener('pointercancel', () => { isTouchActive = false; stopNote(); });
+
+            pianoElement.appendChild(key);
+        });
+    });
+
+    const laneCols = {};
+    noteLetterOrder.forEach((letter) => {
+        const col = document.createElement('div');
+        col.className = 'note-lane-col';
+        laneCols[letter] = col;
+        noteLane.appendChild(col);
+    });
+    const hitLine = document.createElement('div');
+    hitLine.id = 'note-lane-hitline';
+    noteLane.appendChild(hitLine);
+
+    const FALL_DURATION = 1.3;
+    const activeTiles = new Map();
+
+    function renderFallingLane(t) {
+        if (soloMode) return;
+        const laneH = noteLane.clientHeight;
+        if (!laneH) return;
+        const whiteWpx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--white-w')) || 0;
+        const tileSize = whiteWpx * 0.48;
+        const landTop = Math.max(0, laneH - tileSize);
+        const progressCutoff = 1 + (NOTE_TAIL + 0.3) / FALL_DURATION;
+        songNotes.forEach((n, i) => {
+            const letter = n.note[0];
+            const col = laneCols[letter];
+            if (!col) return;
+            const timeUntil = n.time - t;
+            const visible = timeUntil <= FALL_DURATION && timeUntil >= -(NOTE_TAIL + 0.3);
+            let tile = activeTiles.get(i);
+            if (visible) {
+                if (!tile) {
+                    tile = document.createElement('div');
+                    tile.className = 'falling-note';
+                    const avatar = document.createElement('div');
+                    avatar.className = 'falling-note-avatar';
+                    const img = document.createElement('img');
+                    img.src = characterImages[noteLetterOrder.indexOf(letter)] || '';
+                    avatar.appendChild(img);
+                    tile.appendChild(avatar);
+                    if (n.note.includes('#')) {
+                        tile.classList.add('sharp');
+                        const badge = document.createElement('div');
+                        badge.className = 'sharp-badge';
+                        tile.appendChild(badge);
+                    }
+                    col.appendChild(tile);
+                    activeTiles.set(i, tile);
+                }
+                if (!tile.classList.contains('hit')) {
+                    const progress = Math.max(0, 1 - timeUntil / FALL_DURATION);
+                    tile.style.top = (progress * landTop) + 'px';
+                    if (progress > 1) {
+                        const fade = Math.min(1, (progress - 1) / (progressCutoff - 1));
+                        tile.style.opacity = String(Math.max(0, 1 - fade));
+                    }
+                }
+            } else if (tile) {
+                tile.remove();
+                activeTiles.delete(i);
+            }
+        });
+    }
+
+    function markTileHit(index) {
+        const tile = activeTiles.get(index);
+        if (!tile) return;
+        tile.classList.add('hit');
+        activeTiles.delete(index);
+        setTimeout(() => tile.remove(), 300);
+    }
+
+    // --- "אני רוצה לנסות לבד" — self-paced staff view. Every note in the
+    // song is laid out once, left to right in order, at its real pitch
+    // height on a 5-line staff (do sits on a ledger line below the staff,
+    // same as real sheet music). No falling animation, no audio timing —
+    // the child just works through the sequence at their own pace. No
+    // "play this next" hint on purpose — only completed notes light up.
+    let soloMode = false;
+    let soloIdx = 0;
+    const soloBtn = document.getElementById('solo-btn');
+    const staffWrap = document.getElementById('staff-wrap');
+    const staffInner = document.getElementById('staff-inner');
+    const staffNoteEls = [];
+
+    const STAFF_PITCH_Y = { C: 60, D: 54, E: 48, F: 42, G: 36, A: 30, B: 24 };
+
+    function buildStaff() {
+        staffInner.innerHTML = '';
+        staffNoteEls.length = 0;
+        const wrapH = staffWrap.clientHeight || 150;
+        const offsetY = Math.max(10, (wrapH - 60) / 2);
+        [0, 12, 24, 36, 48].forEach(y => {
+            const line = document.createElement('div');
+            line.className = 'staff-line';
+            line.style.top = (y + offsetY) + 'px';
+            staffInner.appendChild(line);
+        });
+        const whiteWpx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--white-w')) || 50;
+        const noteSize = whiteWpx * 0.5;
+        const spacing = noteSize * 1.35;
+        staffInner.style.width = (songNotes.length * spacing + 40) + 'px';
+        songNotes.forEach((n, i) => {
+            const letter = n.note[0];
+            const y = STAFF_PITCH_Y[letter] + offsetY;
+            const x = 30 + i * spacing;
+            if (letter === 'C') {
+                const ledger = document.createElement('div');
+                ledger.className = 'staff-ledger';
+                ledger.style.left = x + 'px';
+                ledger.style.top = y + 'px';
+                ledger.style.width = (noteSize * 1.3) + 'px';
+                staffInner.appendChild(ledger);
+            }
+            const note = document.createElement('div');
+            note.className = 'staff-note';
+            if (i < soloIdx) note.classList.add('done');
+            note.style.left = x + 'px';
+            note.style.top = y + 'px';
+            note.style.width = noteSize + 'px';
+            note.style.height = noteSize + 'px';
+            const avatar = document.createElement('div');
+            avatar.className = 'staff-note-avatar';
+            const img = document.createElement('img');
+            img.src = characterImages[noteLetterOrder.indexOf(letter)] || '';
+            avatar.appendChild(img);
+            note.appendChild(avatar);
+            if (n.note.includes('#')) {
+                const badge = document.createElement('div');
+                badge.className = 'sharp-badge';
+                note.appendChild(badge);
+            }
+            staffInner.appendChild(note);
+            staffNoteEls.push(note);
+        });
+        updateStaffScroll();
+    }
+
+    function markStaffNoteDone(index) {
+        const el = staffNoteEls[index];
+        if (el) el.classList.add('done');
+    }
+
+    function updateStaffScroll() {
+        const cur = staffNoteEls[soloIdx];
+        if (cur) cur.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    }
+
+    soloBtn.addEventListener('click', () => {
+        soloMode = !soloMode;
+        soloBtn.classList.toggle('active', soloMode);
+        soloBtn.textContent = soloMode ? 'חזרה לתרגול הרגיל' : 'אני רוצה לנסות לבד';
+        noteLane.classList.toggle('hidden', soloMode);
+        staffWrap.classList.toggle('active', soloMode);
+        if (soloMode) {
+            player.pauseVideo();
+            isPaused = true;
+            playPauseBtn.textContent = '▶';
+            soloIdx = 0;
+            staffNoteEls.forEach(el => el.classList.remove('done'));
+            buildStaff();
+            dismissPracticeHint();
+            Object.values(keyByNote).forEach(el => el.classList.remove('due'));
+            resetKeyFills();
+            activeTiles.forEach(tile => tile.remove());
+            activeTiles.clear();
+        }
+        sizeKeys();
+    });
+
+    (function fallLoop() {
+        renderFallingLane(player.getCurrentTime());
+        requestAnimationFrame(fallLoop);
+    })();
+
+    function sizeKeys() {
+        const totalWhiteKeys = 7;
+        const reserved = 40;
+        const rawWidth = Math.min(pianoContainer.clientWidth, window.innerWidth);
+        const containerWidth = Math.max(220, rawWidth - reserved);
+
+        let whiteW = Math.floor(containerWidth / totalWhiteKeys);
+        whiteW = Math.max(24, Math.min(whiteW, 100));
+
+        const availableH = Math.max(220, pianoContainer.clientHeight - 20);
+        const laneH = Math.max(70, Math.min(150, Math.round(whiteW * 2.1)));
+        const maxKeyH = Math.min(260, Math.max(140, availableH - laneH));
+
+        let keyH = whiteW * 3.2;
+        if (keyH > maxKeyH) {
+            keyH = maxKeyH;
+            whiteW = Math.max(24, Math.floor(keyH / 3.2));
+        }
+
+        const blackW = Math.round(whiteW * 0.495);
+
+        document.documentElement.style.setProperty('--white-w', whiteW + 'px');
+        document.documentElement.style.setProperty('--black-w', blackW + 'px');
+        document.documentElement.style.setProperty('--key-h', keyH + 'px');
+        document.documentElement.style.setProperty('--lane-h', laneH + 'px');
+        document.documentElement.style.setProperty('--staff-h', laneH + 'px');
+    }
+    window.addEventListener('resize', () => { sizeKeys(); if (soloMode) buildStaff(); });
+    sizeKeys();
+    window.addEventListener('load', sizeKeys);
+    requestAnimationFrame(sizeKeys);
+    setTimeout(sizeKeys, 400);
+    setTimeout(sizeKeys, 1200);
+
+    setInterval(() => {
+        if (soloMode) return;
+        if (songIdx >= songNotes.length) return;
+        const t = player.getCurrentTime();
+        const cur = songNotes[songIdx];
+        const keyEl = keyByNote[cur.note];
+        const inWindow = t >= cur.time - NOTE_LEAD && t <= cur.time + NOTE_TAIL;
+
+        if (keyEl) keyEl.classList.toggle('due', inWindow);
+
+        if (t > cur.time + NOTE_TAIL) {
+            if (keyEl) keyEl.classList.remove('due');
+            songIdx++;
+            songHit = false;
+        }
+    }, 100);
+</script>
+</body>
+</html>

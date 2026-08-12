@@ -292,6 +292,18 @@
             font-family: Arial, sans-serif;
         }
         #home-btn-label svg { flex: 0 0 auto; width: 12px; height: 12px; }
+
+        /* On a narrow phone the piano fills almost the whole width, so the
+           mid-screen floating spot (fine on desktop, where there's empty
+           space beside the piano) sits right on top of the falling notes.
+           Move it up into the same row as the speed/mode controls instead,
+           and shrink it to match that row's scale. */
+        @media (max-width: 640px) {
+            #home-btn { top: 6px; right: 6px; gap: 3px; }
+            #home-btn-circle { width: 46px; height: 46px; border-width: 2px; }
+            #home-btn-label { font-size: 9px; max-width: 60px; padding: 2px 5px; }
+            #home-btn-label svg { width: 9px; height: 9px; }
+        }
         #staff-wrap {
             position: relative;
             /* Tied to the piano's own width (7 white keys) — without this,

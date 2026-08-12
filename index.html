@@ -299,7 +299,10 @@
            Move it up into the same row as the speed/mode controls instead,
            and shrink it to match that row's scale. */
         @media (max-width: 640px) {
-            #home-btn { top: 6px; right: 6px; gap: 3px; }
+            /* The desktop rule vertically centers itself with translateY —
+               irrelevant (and actively wrong) once anchored near the top
+               edge instead, so it's cancelled here. */
+            #home-btn { top: 6px; right: 6px; gap: 3px; transform: none; }
             #home-btn-circle { width: 46px; height: 46px; border-width: 2px; }
             #home-btn-label { font-size: 9px; max-width: 60px; padding: 2px 5px; }
             #home-btn-label svg { width: 9px; height: 9px; }

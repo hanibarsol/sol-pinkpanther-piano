@@ -214,9 +214,15 @@
            in the song sits laid out left-to-right on a music staff, at its
            real pitch height, and the child works through them at their own
            pace with no clock pushing them forward. */
+        /* Same pill as the other secondary buttons, but this one guards the
+           entrance to a whole alternate practice mode — a plain gray pill
+           was getting missed entirely, so it gets a standing teal ring that
+           gently pulses (not a fill-color change) to draw the eye, matching
+           how "special/interactive" already reads elsewhere in the family
+           of apps (e.g. the glowing ring around a correctly-played note). */
         #solo-btn {
             touch-action: auto;
-            border: 1px solid rgba(255,255,255,0.18);
+            border: 1px solid var(--teal);
             border-radius: 20px;
             padding: 9px 20px;
             font-size: 15px;
@@ -225,8 +231,16 @@
             color: #fff;
             cursor: pointer;
             white-space: nowrap;
+            animation: solo-btn-pulse 2.2s ease-in-out infinite;
         }
-        #solo-btn.active { background: var(--teal); color: #0a1210; border-color: var(--teal); font-weight: bold; }
+        #solo-btn.active { background: var(--teal); color: #0a1210; border-color: var(--teal); font-weight: bold; animation: none; }
+        @keyframes solo-btn-pulse {
+            0%, 100% { box-shadow: 0 0 0 2px rgba(111,214,201,0.35), 0 0 6px 1px rgba(111,214,201,0.3); }
+            50% { box-shadow: 0 0 0 2px rgba(111,214,201,0.85), 0 0 14px 5px rgba(111,214,201,0.6); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #solo-btn { animation: none; box-shadow: 0 0 0 2px rgba(111,214,201,0.6); }
+        }
 
         /* "ככה השיר נשמע" — a short reference clip of Hani playing+singing
            the taught segment, so a child who's pressing the right notes but

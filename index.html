@@ -1124,9 +1124,17 @@
         let whiteW = Math.floor(containerWidth / totalWhiteKeys);
         whiteW = Math.max(24, Math.min(whiteW, 100));
 
-        const availableH = Math.max(220, pianoContainer.clientHeight - 20);
-        const laneH = Math.max(70, Math.min(150, Math.round(whiteW * 2.1)));
-        const maxKeyH = Math.min(260, Math.max(140, availableH - laneH));
+        // No 220px floor here on purpose — on a short landscape phone screen
+        // that floor used to claim more height than actually exists,
+        // pushing the piano/staff below the visible viewport instead of
+        // shrinking to fit it.
+        const availableH = Math.max(140, pianoContainer.clientHeight - 20);
+        const idealLaneH = Math.max(50, Math.min(150, Math.round(whiteW * 2.1)));
+        // The lane/staff is capped at a share of the real available height
+        // too, not just sized off width — otherwise it alone could claim
+        // most of a short landscape budget, leaving the keys with nothing.
+        const laneH = Math.min(idealLaneH, Math.max(35, Math.round(availableH * 0.45)));
+        const maxKeyH = Math.min(260, Math.max(90, availableH - laneH));
 
         let keyH = whiteW * 3.2;
         if (keyH > maxKeyH) {

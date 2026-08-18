@@ -538,6 +538,10 @@
     .sol-home-btn { transition: none; }
     .sol-home-btn:hover { transform: none; }
 }
+
+/* On a narrow phone the fixed home button reaches into this row — reserve
+   its corner rather than shrinking any control. */
+@media (max-width: 420px) { #speed-bar { padding-left: 62px; } }
 </style>
 </head>
 <body>

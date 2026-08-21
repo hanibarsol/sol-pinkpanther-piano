@@ -1163,6 +1163,11 @@
             avatar.appendChild(water);
             staffWaterEls.push(water);
             note.appendChild(avatar);
+            if (n.note.includes('#')) {
+                const badge = document.createElement('div');
+                badge.className = 'sharp-badge';
+                note.appendChild(badge);
+            }
             const ring = document.createElement('div');
             ring.className = 'hold-ring';
             note.appendChild(ring);
